@@ -1,26 +1,27 @@
-# OCR environment - Windows, CPU-only. Python 3.9+
-# Install PyTorch CPU first, then the rest:
-#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-#   pip install -r requirements.txt
+# OCR environment - Windows/Linux, CPU-only. Python 3.9+
+# PyTorch: install separately - Windows: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# Dockerfile installs PyTorch CPU after this file.
 
-# PyTorch (CPU) - install from index above
-torch==2.10.0+cpu
-torchvision==0.25.0+cpu
-torchaudio==2.10.0+cpu
+# FastAPI service (Railway / local)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
 
-# Transformers (TrOCR)
+# OCR dependencies
 transformers==5.0.0
-
-# Image / preprocessing
-opencv-python==4.13.0.90
+ultralytics>=8.0.0
+opencv-python-headless>=4.8.0
 pillow==12.0.0
+pytesseract==0.3.13
 numpy==2.3.5
 matplotlib==3.10.8
+pytz>=2024.1
+
+# Image / preprocessing
 scikit-image==0.26.0
 
-# OCR
-pytesseract==0.3.13
-lmdb==1.4.0   # UTRNet read.py / dataset
+# OCR (UTRNet)
+lmdb==1.4.0
 
 # Layout (without Detectron2 - see SETUP_NOTES.md)
 layoutparser==0.3.4

@@ -1,0 +1,22 @@
+# Ignore local dev and large assets when deploying to Railway
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+*.egg-info
+.venv
+venv
+ocr_env
+env
+
+# Optional: skip heavy local outputs and inputs (keep repo small)
+# inputs/
+# outputs/
+# sample_inputs/
+
+# Documentation (optional; remove if you want docs on deploy)
+# *.md
+# !README.md

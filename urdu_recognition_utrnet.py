@@ -9,6 +9,7 @@ Fixed config: HRNet + DBiLSTM + CTC. Windows-compatible.
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import subprocess
@@ -16,6 +17,17 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, TypedDict
+
+
+def _configure_stdout_utf8() -> None:
+    """Force UTF-8 on Windows to avoid UnicodeEncodeError when printing Urdu."""
+    if sys.platform != "win32":
+        return
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 # ---------------------------------------------------------------------------
 # Paths (UTRNet repo and pretrained weights)
@@ -289,25 +301,47 @@ def recognize_all(
 
 
 # ---------------------------------------------------------------------------
-# Main: read crops from directory, run recognition, print line by line
+# Main: read crops from directory, run recognition, save/print ASCII-safe
 # ---------------------------------------------------------------------------
-def _run_demo(crop_dir: str | Path) -> None:
-    """Run recognition on all crops in crop_dir and print recognized text."""
+def _run_demo(
+    crop_dir: str | Path,
+    *,
+    output_txt: Path | None = None,
+    output_json: Path | None = None,
+) -> bool:
+    """Run recognition on all crops in crop_dir; optionally save to UTF-8 .txt and .json. Returns True on success."""
     crop_dir = Path(crop_dir)
     if not crop_dir.is_dir():
         print(f"Error: Directory not found: {crop_dir}", file=sys.stderr)
-        print("Usage: python urdu_recognition_utrnet.py <crop_dir>", file=sys.stderr)
-        return
+        print("Usage: python urdu_recognition_utrnet.py <crop_dir> [--output-txt PATH] [--output-json PATH]", file=sys.stderr)
+        return False
 
-    print(f"Crop directory: {crop_dir}")
-    print("Running UTRNet-Large (HRNet + DBiLSTM + CTC)...")
+    print(f"Crop directory: {crop_dir}", flush=True)
+    print("Running UTRNet-Large (HRNet + DBiLSTM + CTC)...", flush=True)
     results = recognize_all(crop_dir)
-    print(f"Recognized {len(results)} region(s):\n")
-    for r in results:
-        print(f"  {r['image']}: {r['text']}")
+    n = len(results)
+    print(f"Processed {n} image(s).", flush=True)
+
+    if output_txt is not None:
+        output_txt = Path(output_txt)
+        output_txt.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_txt, "w", encoding="utf-8") as f:
+            for r in results:
+                f.write(f"{r['image']}: {r['text']}\n")
+        print(f"Results saved to {output_txt}", flush=True)
+
+    if output_json is not None:
+        output_json = Path(output_json)
+        output_json.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_json, "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+        print(f"Results saved to {output_json}", flush=True)
+
+    return True
 
 
 if __name__ == "__main__":
+    _configure_stdout_utf8()
     parser = argparse.ArgumentParser(
         description="Recognize printed Urdu text in cropped images using pretrained UTRNet-Large.",
     )
@@ -316,5 +350,20 @@ if __name__ == "__main__":
         type=Path,
         help="Directory of cropped images (e.g. from text_detection_yolov8.py: 0.png, 1.png, ...).",
     )
+    parser.add_argument(
+        "--output-txt",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Save recognition results to a UTF-8 encoded .txt file (one line per image: text).",
+    )
+    parser.add_argument(
+        "--output-json",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Save recognition results to a .json file (list of {image, text} objects).",
+    )
     args = parser.parse_args()
-    _run_demo(args.crop_dir)
+    ok = _run_demo(args.crop_dir, output_txt=args.output_txt, output_json=args.output_json)
+    sys.exit(0 if ok else 1)

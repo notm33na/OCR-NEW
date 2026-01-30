@@ -14,12 +14,9 @@ env.bak/
 venv.bak/
 
 # Models and weights
-*.pth
-*.pt
-*.bin
+
 *.onnx
-saved_models/
-trocr-base-handwritten/
+
 
 # Cloned repositories
 UTRNet-High-Resolution-Urdu-Text-Recognition/
