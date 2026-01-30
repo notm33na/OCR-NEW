@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+ocr_env/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Models and weights
+*.pth
+*.pt
+*.bin
+*.onnx
+saved_models/
+trocr-base-handwritten/
+
+# Cloned repositories
+UTRNet-High-Resolution-Urdu-Text-Recognition/
+urdu-text-detection/
+
+# Outputs
+outputs/
+inputs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
