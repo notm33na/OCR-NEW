@@ -1,48 +1,49 @@
-# Python cache
+# Python
 __pycache__
 *.pyc
 *.pyo
-*.pyd
-*.py[cod]
-*$py.class
-.pytest_cache
-.mypy_cache
-*.egg-info
-.eggs
+.Python
+*.log
 
-# Virtual environments
-env
-venv
+# Environments
 ocr_env
 ocr_py39
-.venv
+env
+venv
 
 # Git
 .git
 .gitignore
+.gitattributes
 
-# Output and input data (keep dirs in image, exclude contents)
-outputs/*
-inputs/*
-!inputs/.gitkeep
+# Documentation (not needed in container)
+*.md
+ARCHITECTURE.md
+COMPLETE_RUN_STEPS.md
+FUTURE_WORK.md
+LIMITATIONS.md
+RUN_AND_TEST.md
+SETUP_NOTES.md
+VERIFY_BILINGUAL_OCR_README.md
 
-# Model files (mount or copy separately)
-saved_models/*
+# Models (too large, will download on demand)
+saved_models
+trocr-base-handwritten
 *.pt
 *.pth
+*.bin
+*.onnx
 
-# Cloned / downloaded repos and models
+# Repos
 UTRNet-High-Resolution-Urdu-Text-Recognition
 urdu-text-detection
-trocr-base-handwritten
 
-# IDE and OS
-.idea
+# Test data
+inputs
+outputs
+temp_uploads
+
+# IDE
 .vscode
+.idea
 *.swp
-.DS_Store
-.cursor
-
-# Optional docs (Dockerfile copies *.md; uncomment to exclude)
-# *.md
-# !README.md
