@@ -158,6 +158,8 @@ async def ocr(
 
     try:
         logger.info("Processing image: filename=%s lang=%s", filename, lang)
+        if lang == "english":
+            logger.info("OCR using English pipeline (recognize_english_page + max_new_tokens=512)")
         result = bilingual_ocr.process_image(temp_path, lang=lang)
 
         if not result.get("success"):
@@ -172,6 +174,7 @@ async def ocr(
             "extracted_text": result.get("text", ""),
             "details": result.get("details", []),
             "confidence": result.get("confidence", 1.0),
+            "ocr_build": "v2-english-page-512tokens",
         }
     except HTTPException:
         raise
