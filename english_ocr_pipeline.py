@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Tuple
@@ -83,6 +84,46 @@ def recognize_english(image_path: str | Path, *, skip_preprocess: bool = False) 
     return text.strip()
 
 
+def _recognize_english_fullpage_by_strips(image_path: str | Path, num_strips: int = 10) -> str:
+    """
+    Fallback when region detection fails: split the preprocessed page into horizontal
+    strips and run TrOCR on each strip. Avoids feeding the whole page at once (which
+    causes TrOCR to hallucinate short phrases like '4 hours').
+    """
+    path = Path(image_path).resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Image not found: {path}")
+    try:
+        _, gray_deskewed = preprocess_image(path)
+    except Exception:
+        return recognize_english(path)
+    h, w = gray_deskewed.shape[:2]
+    if h < 100:
+        return recognize_english(path)
+    strip_height = max(h // num_strips, 80)
+    texts: List[str] = []
+    with tempfile.TemporaryDirectory(prefix="ocr_strips_") as tmp:
+        tmp_path = Path(tmp)
+        for i in range(num_strips):
+            y1 = i * strip_height
+            y2 = min(y1 + strip_height, h)
+            if y2 <= y1:
+                break
+            strip = gray_deskewed[y1:y2, :]
+            if strip.size == 0:
+                continue
+            pil_strip = Image.fromarray(strip).convert("RGB")
+            strip_file = tmp_path / f"strip_{i:02d}.png"
+            pil_strip.save(str(strip_file))
+            try:
+                t = recognize_english(strip_file, skip_preprocess=True)
+                if t and t.strip():
+                    texts.append(t.strip())
+            except Exception:
+                pass
+    return "\n".join(texts) if texts else recognize_english(path)
+
+
 def recognize_english_page(image_path: str | Path, crop_dir: Path | None = None) -> str:
     """
     Recognize full-page English: use shared detector (YOLOv8 UrduDoc or OpenCV fallback),
@@ -103,10 +144,10 @@ def recognize_english_page(image_path: str | Path, crop_dir: Path | None = None)
     try:
         boxes_xywh, paths = detect_and_crop_text_with_boxes(path, crop_dir)
     except Exception:
-        return recognize_english(path)
+        return _recognize_english_fullpage_by_strips(path)
 
     if not boxes_xywh or not paths or len(boxes_xywh) != len(paths):
-        return recognize_english(path)
+        return _recognize_english_fullpage_by_strips(path)
 
     img_w_approx = max(x + w for (x, y, w, h) in boxes_xywh)
     mid_x = img_w_approx / 2.0
@@ -146,7 +187,7 @@ def recognize_english_page(image_path: str | Path, crop_dir: Path | None = None)
         parts.append("--- Right column ---")
         parts.extend(right_texts)
     if not parts:
-        return recognize_english(path)
+        return _recognize_english_fullpage_by_strips(path)
     return "\n".join(parts)
 
 
