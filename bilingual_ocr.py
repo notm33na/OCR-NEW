@@ -23,7 +23,7 @@ from text_detection_yolov8 import detect_and_crop_text
 from text_region_detection import detect_text_blocks
 from script_detection import detect_script, detect_script_page
 from urdu_recognition_utrnet import get_urdu_inprocess_state, recognize_urdu
-from english_ocr_pipeline import recognize_english
+from english_ocr_pipeline import recognize_english, recognize_english_page
 from post_process import _clean_urdu_text
 
 # ---------------------------------------------------------------------------
@@ -135,6 +135,26 @@ def _process_one_page(
     When debug_page_dir is set, saves preprocessed images and crops under that dir.
     Returns list of {"language": "urdu"|"english", "text": "..."} in reading order.
     """
+    # English: use full-page English pipeline (region detection + column order + TrOCR per crop, or full-page fallback).
+    # Avoids TrOCR hallucinating short wrong phrases (e.g. "4 hours") on form-like or full-page images.
+    if lang == "english":
+        if not quiet:
+            print(f"  English page: using recognize_english_page for {image_path.name}", file=sys.stderr)
+        try:
+            text = recognize_english_page(image_path)
+            if text and text.strip():
+                return [{"language": "english", "text": text.strip()}]
+        except Exception as e:
+            if not quiet:
+                print(f"  recognize_english_page failed: {e}, trying fallback", file=sys.stderr)
+            try:
+                text = recognize_english(image_path)
+                if text and text.strip():
+                    return [{"language": "english", "text": text.strip()}]
+            except Exception:
+                pass
+        return []
+
     if debug_page_dir is not None:
         crop_dir = debug_page_dir / "crops"
     elif crop_base_dir is None:
@@ -145,8 +165,8 @@ def _process_one_page(
         image_path, crop_dir, use_yolov8=True, debug_page_dir=debug_page_dir
     )
     if not crop_paths:
-        # Fallback: run full-page OCR when detector finds no regions (e.g. handwritten, forms)
-        if lang in ("english", "auto"):
+        # Fallback for auto: run full-page English when detector finds no regions
+        if lang == "auto":
             if not quiet:
                 print(f"  No regions detected for {image_path.name}, running full-page English OCR", file=sys.stderr)
             try:
