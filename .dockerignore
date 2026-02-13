@@ -26,7 +26,7 @@ RUN_AND_TEST.md
 SETUP_NOTES.md
 VERIFY_BILINGUAL_OCR_README.md
 
-# Models (too large, will download on demand)
+# Models (too large, will download on demand; Dockerfile downloads yolov8m_UrduDoc.pt at build time)
 saved_models
 trocr-base-handwritten
 *.pt

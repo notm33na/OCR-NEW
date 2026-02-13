@@ -145,7 +145,18 @@ def _process_one_page(
         image_path, crop_dir, use_yolov8=True, debug_page_dir=debug_page_dir
     )
     if not crop_paths:
-        if not quiet:
+        # Fallback: run full-page OCR when detector finds no regions (e.g. handwritten, forms)
+        if lang in ("english", "auto"):
+            if not quiet:
+                print(f"  No regions detected for {image_path.name}, running full-page English OCR", file=sys.stderr)
+            try:
+                text = recognize_english(image_path)
+                if text and text.strip():
+                    return [{"language": "english", "text": text.strip()}]
+            except Exception as e:
+                if not quiet:
+                    print(f"  Full-page English OCR failed: {e}", file=sys.stderr)
+        elif not quiet:
             print(f"  No regions detected: {image_path.name}", file=sys.stderr)
         return []
 

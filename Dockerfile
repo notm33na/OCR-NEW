@@ -1,11 +1,12 @@
 FROM python:3.9-slim
 
-# Install system dependencies in one layer
+# Install system dependencies in one layer (curl for downloading YOLOv8 text model)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-ara \
     libgl1 \
     libglib2.0-0 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -21,8 +22,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY *.py ./
 
-# Create directories
-RUN mkdir -p saved_models inputs outputs temp_uploads
+# Download YOLOv8 UrduDoc text-detection model (region detection works on Railway; same as local)
+# Source: https://github.com/abdur75648/urdu-text-detection/releases
+RUN mkdir -p urdu-text-detection saved_models inputs outputs temp_uploads && \
+    curl -sL -o urdu-text-detection/yolov8m_UrduDoc.pt \
+    "https://github.com/abdur75648/urdu-text-detection/releases/download/v1.0.0/yolov8m_UrduDoc.pt"
 
 # Expose port
 EXPOSE 8000

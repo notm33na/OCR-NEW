@@ -44,7 +44,9 @@ curl -X POST "http://localhost:8000/ocr" \
 
 3. **Models and data**
    - UTRNet: clone `UTRNet-High-Resolution-Urdu-Text-Recognition` and place `saved_models/UTRNet-Large/best_norm_ED.pth`.
-   - YOLOv8: uses `yolov8n.pt` or `urdu-text-detection/yolov8m_UrduDoc.pt` if present.
+   - YOLOv8 text detection: for region detection (same as Railway), run  
+     `python scripts/download_urdudoc_model.py`  
+     to download `urdu-text-detection/yolov8m_UrduDoc.pt`. Otherwise the pipeline uses `yolov8n.pt` + OpenCV fallback.
    - Tesseract: required for script detection (`auto`); install and add to PATH.
 
 4. **Start the app**
