@@ -77,7 +77,8 @@ def recognize_english(image_path: str | Path, *, skip_preprocess: bool = False) 
 
     processor, model = _get_trocr()
     pixel_values = processor(images=pil_image, return_tensors="pt").pixel_values
-    generated_ids = model.generate(pixel_values)
+    # Allow full paragraphs/pages: default max_length=20 was truncating to a few words
+    generated_ids = model.generate(pixel_values, max_new_tokens=512)
     text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
     return text.strip()
 
