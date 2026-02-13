@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -356,6 +357,89 @@ def _main() -> None:
         debug_images=args.debug_images,
         quiet=args.quiet,
     )
+
+
+def process_image(input_path: str | Path, lang: str = "auto") -> dict[str, Any]:
+    """
+    Wrapper for API use: runs OCR on a single image and returns a dict compatible
+    with api.py POST /ocr. Uses run() with temp files and reads the JSON output.
+
+    Returns:
+        {
+            "success": True/False,
+            "text": "...",
+            "language": "urdu" | "english" | "unknown",
+            "details": [{"page": N, "regions": [{"language": "...", "text": "..."}]}],
+            "confidence": float
+        }
+    """
+    input_path = Path(input_path)
+    # Normalize lang: api may send "en"/"ur"; run() expects "auto"|"urdu"|"english"
+    _lang = (lang or "auto").strip().lower()
+    if _lang in ("en", "english"):
+        _lang = "english"
+    elif _lang in ("ur", "urdu"):
+        _lang = "urdu"
+    else:
+        _lang = "auto"
+
+    try:
+        fd, temp_txt = tempfile.mkstemp(suffix=".txt")
+        os.close(fd)
+        temp_txt_path = Path(temp_txt)
+        json_path = temp_txt_path.with_suffix(".json")
+        try:
+            run(
+                input_path,
+                temp_txt_path,
+                lang=_lang,
+                save_json=True,
+                json_path=json_path,
+                quiet=True,
+            )
+            if not json_path.exists():
+                return {"success": False, "text": "", "language": _lang, "details": [], "confidence": 0.0}
+
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        finally:
+            try:
+                if temp_txt_path.exists():
+                    temp_txt_path.unlink()
+            except Exception:
+                pass
+            try:
+                if json_path.exists():
+                    json_path.unlink()
+            except Exception:
+                pass
+
+        # data is list of {page, regions: [{language, text}]}
+        if not isinstance(data, list):
+            return {"success": False, "text": "", "language": _lang, "details": [], "confidence": 0.0}
+
+        text_parts: list[str] = []
+        detected_lang = "unknown"
+        for page_obj in data:
+            regions = page_obj.get("regions") or []
+            for r in regions:
+                text_parts.append((r.get("text") or "").strip())
+                if detected_lang == "unknown" and r.get("language"):
+                    detected_lang = r["language"]
+
+        full_text = "\n".join(p for p in text_parts if p)
+        if detected_lang == "unknown" and data:
+            detected_lang = _lang if _lang != "auto" else "english"
+
+        return {
+            "success": True,
+            "text": full_text,
+            "language": detected_lang,
+            "details": data,
+            "confidence": 1.0,
+        }
+    except Exception:
+        return {"success": False, "text": "", "language": _lang, "details": [], "confidence": 0.0}
 
 
 if __name__ == "__main__":
