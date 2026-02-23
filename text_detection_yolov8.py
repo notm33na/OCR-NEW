@@ -31,6 +31,11 @@ DEFAULT_CONF_THRESHOLD = 0.2        # Same as urdu-text-detection/detect.py
 URDU_DOC_IMGSZ = 1280               # Same as detect.py for text line detection
 
 
+def preload_model(model_path: str | Path = DEFAULT_MODEL_PATH) -> YOLO:
+    """Load a YOLO model once and return it. Use to avoid reloading per-request."""
+    return YOLO(str(model_path))
+
+
 def _opencv_fallback_crop(
     image: np.ndarray,
     image_path: Path,
@@ -140,6 +145,7 @@ def detect_and_crop_text(
     model_path: str | Path = DEFAULT_MODEL_PATH,
     conf_threshold: float = DEFAULT_CONF_THRESHOLD,
     verbose: bool = False,
+    model: YOLO | None = None,
 ) -> List[Path]:
     """
     Load image, run YOLOv8 text detection, crop detected regions, and save crops.
@@ -169,9 +175,10 @@ def detect_and_crop_text(
         raise ValueError(f"Could not load image: {path}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load YOLOv8 model (UrduDoc .pt or yolov8n.pt)
+    # Load YOLOv8 model (UrduDoc .pt or yolov8n.pt) — reuse if pre-loaded
     model_path_str = str(model_path)
-    model = YOLO(model_path_str)
+    if model is None:
+        model = YOLO(model_path_str)
 
     # Run inference: use imgsz=1280 for UrduDoc (matches urdu-text-detection/detect.py)
     predict_kw: dict = {"source": str(path), "conf": conf_threshold, "verbose": verbose}
@@ -233,6 +240,7 @@ def detect_and_crop_text_with_boxes(
     model_path: str | Path = DEFAULT_MODEL_PATH,
     conf_threshold: float = DEFAULT_CONF_THRESHOLD,
     verbose: bool = False,
+    model: YOLO | None = None,
 ) -> Tuple[List[Tuple[int, int, int, int]], List[Path]]:
     """
     Same as detect_and_crop_text but also returns bounding boxes (x, y, w, h) for each crop.
@@ -250,7 +258,8 @@ def detect_and_crop_text_with_boxes(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     model_path_str = str(model_path)
-    model = YOLO(model_path_str)
+    if model is None:
+        model = YOLO(model_path_str)
     predict_kw: dict = {"source": str(path), "conf": conf_threshold, "verbose": verbose}
     if "UrduDoc" in model_path_str or Path(model_path_str).name == "yolov8m_UrduDoc.pt":
         predict_kw["imgsz"] = URDU_DOC_IMGSZ

@@ -18,32 +18,29 @@ venv
 
 # Documentation (not needed in container)
 *.md
-ARCHITECTURE.md
-COMPLETE_RUN_STEPS.md
-FUTURE_WORK.md
-LIMITATIONS.md
-RUN_AND_TEST.md
-SETUP_NOTES.md
-VERIFY_BILINGUAL_OCR_README.md
 
-# Models (too large, will download on demand)
-saved_models
-trocr-base-handwritten
-*.pt
-*.pth
-*.bin
+# Models - only exclude generic COCO weights (UrduDoc and UTRNet weights must ship)
+yolov8n.pt
 *.onnx
 
-# Repos
+# Repos and weights cloned/downloaded at build time (not COPYed)
 UTRNet-High-Resolution-Urdu-Text-Recognition
 urdu-text-detection
+saved_models
 
 # Test data
 inputs
 outputs
 temp_uploads
+sample_inputs
 
 # IDE
 .vscode
 .idea
 *.swp
+
+# Test / smoke-test scripts not needed in production
+run_smoke_tests.py
+verify_bilingual_ocr.py
+verify_env.py
+evaluation.py

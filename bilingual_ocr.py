@@ -179,6 +179,85 @@ def _process_one_page(
     return regions
 
 
+def process_image(
+    image_path: str | Path,
+    lang: str = "auto",
+) -> dict[str, Any]:
+    """
+    Single-image API entry point: run bilingual OCR on one image and return a result dict.
+
+    Wraps the existing pipeline (_process_one_page) for API usage. Does not print to stdout.
+
+    Args:
+        image_path: Path to the image file (jpg/png).
+        lang: "auto" (script detection), "urdu", or "english".
+
+    Returns:
+        Dict with:
+        - success (bool): True if OCR ran without fatal error.
+        - text (str): Extracted text combined from all regions (newline-separated).
+        - language (str): Detected or requested language ("urdu", "english", "mixed", "unknown").
+        - confidence (float): 1.0 on success, 0.0 on failure (no per-token confidence from pipeline).
+        - details (list): Per-region results [{"language": str, "text": str}, ...].
+        - error (str, optional): Error message when success is False.
+    """
+    path = Path(image_path).resolve()
+    result: dict[str, Any] = {
+        "success": False,
+        "text": "",
+        "language": "unknown",
+        "confidence": 0.0,
+        "details": [],
+    }
+    if not path.is_file():
+        result["error"] = f"Image file not found: {path}"
+        return result
+
+    # Validate image can be loaded
+    img = cv2.imread(str(path))
+    if img is None:
+        result["error"] = f"Could not load image (invalid or unsupported format): {path}"
+        return result
+
+    if lang not in ("auto", "urdu", "english"):
+        lang = "auto"
+
+    try:
+        regions = _process_one_page(path, lang, crop_base_dir=None, quiet=True)
+    except Exception as e:
+        result["error"] = str(e)
+        return result
+
+    if not regions:
+        result["success"] = True
+        result["language"] = lang if lang != "auto" else "unknown"
+        result["confidence"] = 1.0
+        result["details"] = []
+        result["text"] = ""
+        return result
+
+    # Combine text and determine overall language
+    texts = [r["text"] for r in regions]
+    result["text"] = "\n".join(texts).strip()
+    result["details"] = [{"language": r["language"], "text": r["text"]} for r in regions]
+
+    langs = [r["language"] for r in regions]
+    urdu_count = sum(1 for l in langs if l == "urdu")
+    eng_count = sum(1 for l in langs if l == "english")
+    if urdu_count and not eng_count:
+        result["language"] = "urdu"
+    elif eng_count and not urdu_count:
+        result["language"] = "english"
+    elif urdu_count and eng_count:
+        result["language"] = "mixed"
+    else:
+        result["language"] = lang if lang != "auto" else "unknown"
+
+    result["success"] = True
+    result["confidence"] = 1.0
+    return result
+
+
 def _enumerate_input(
     input_path: Path,
     lang: str,

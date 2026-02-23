@@ -14,8 +14,11 @@ env.bak/
 venv.bak/
 
 # Models and weights
-
+*.pt
+*.pth
+*.bin
 *.onnx
+saved_models/
 
 
 # Cloned repositories
